@@ -1,0 +1,23 @@
+{
+  "name": "rfm69",
+  "version": "1.0.0",
+  "description": "RFM69 Pi library for node",
+  "main": "RFM69.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/wdrach/RFM69_Node.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/wdrach/RFM69_Node/issues"
+  },
+  "homepage": "https://github.com/wdrach/RFM69_Node#readme",
+  "dependencies": {
+    "async": "^2.1.4",
+    "pi-spi": "^1.0.1"
+  }
+}

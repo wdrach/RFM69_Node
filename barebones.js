@@ -1,4 +1,4 @@
-var radio = new require('./RFM69.js');
+var radio = new (require('./RFM69.js').radio)();
 var whilst = require('async').whilst;
 
 var r = require('./registers.js');

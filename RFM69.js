@@ -31,7 +31,7 @@ var r = require('./registers.js');
 //the SPI driver, using pi-spi for now
 var spi = require('pi-spi');
 var SPI = spi.initialize('/dev/spidev0.0');
-SPI.bitOrder(SPI.order.MSB_FIRST);
+SPI.bitOrder(spi.order.MSB_FIRST);
 //async!
 var async = require('async');
 
@@ -90,9 +90,7 @@ function conditionalSet(reg, mask, set, cb) {
   })
 }
 
-function radio() {
-  return;
-}
+function radio() {};
 
 radio.prototype.initialize = function(freqBand, nodeID, networkID, cb) {
   var self = this;
@@ -162,15 +160,19 @@ radio.prototype.initialize = function(freqBand, nodeID, networkID, cb) {
       //encryption is persistent between resets
       self.encrypt(0, callback);
     },
-    function(callback) {
+    function(a, callback) {
+      console.log(callback);
       self.setHighPower(callback);
     },
-    function(callback) {
+    function(a, callback) {
       self.setMode(r.RF69_MODE_STANDBY, callback);
-    },
-    function(callback) {
-      sync(r.REG_IRQFLAGS1)
     }
+    /*function(callback) {
+      readReg(r.REG_IRQFLAGS1, function(err, data) {
+        if (err) return callback(err);
+        if (data & r.RF_IRQFLAGS1_MODEREADY == 0x00)
+      }
+    }*/
   ], cb);
 }
 
@@ -229,15 +231,19 @@ radio.prototype.setMode = function(newMode, callback) {
   }
 }
 
-radio.prototype.setHighPowerRegs(onOff, cb) {
-  writeReg(REG_TESTPA1, onOff ? 0x5D : 0x55, function(err) {
+radio.prototype.setHighPowerRegs = function(onOff, cb) {
+  writeReg(r.REG_TESTPA1, onOff ? 0x5D : 0x55, function(err) {
     if (err) return cb(err);
-    writeReg(REG_TESTPA2, onOff ? 0x7C : 0x70, cb);
+    writeReg(r.REG_TESTPA2, onOff ? 0x7C : 0x70, cb);
   });
 }
 
-radio.prototype.setHighPower(cb) {
+radio.prototype.setHighPower = function(onOff, cb) {
   var self = this;
+  if (cb == undefined) {
+    cb = onOff;
+    onOff = true;
+  }
 
   writeReg(r.REG_OCP, onOff ? r.RF_OCP_OFF : r.RF_OCP_ON, function(err) {
     if (err) return cb(err);
@@ -251,7 +257,7 @@ radio.prototype.setHighPower(cb) {
 //key HAS to be 16 bytes
 //to disable, just enter key = false
 /* TODO: Actually implement the encryption, this just disables it no matter what ATM */
-radio.prototype.encrypt(key, cb) {
+radio.prototype.encrypt = function(key, cb) {
   //not actually supported yet
   key = false;
 
@@ -262,10 +268,10 @@ radio.prototype.encrypt(key, cb) {
   });
 }
 
-radio.prototype.send(toAddress, buf, requestACK, cb) {
+radio.prototype.send = function(toAddress, buf, requestACK, cb) {
   var self = this;
 
-  conditionalSet(r.REG_PACKETCONFIG2, 0xFB, RF_PACKET2_RXRESTART, function(err){
+  conditionalSet(r.REG_PACKETCONFIG2, 0xFB, r.RF_PACKET2_RXRESTART, function(err){
     if (err) return cb(err);
     wait();
   });
@@ -283,7 +289,7 @@ radio.prototype.send(toAddress, buf, requestACK, cb) {
     async.whilst(function() {
       return response;
     }, function(callback) {
-      receiveDone(function(err) {
+      self.receiveDone(function(err) {
         if (err) return response = false;
         canSend(function(err, cs) {
           if (err) return response = false;
@@ -299,7 +305,7 @@ radio.prototype.send(toAddress, buf, requestACK, cb) {
   }
 }
 
-radio.prototype.sendFrame(toAddress, buf, requestACK, cb) {
+radio.prototype.sendFrame = function(toAddress, buf, requestACK, cb) {
   var self = this;
   if (buf.length > r.RF69_MAX_DATA_LEN) return cb(new Error('Data too long'));
 
@@ -342,7 +348,7 @@ radio.prototype.sendFrame(toAddress, buf, requestACK, cb) {
   ], cb);
 }
 
-radio.prototype.sendACK(buf, cb) {
+radio.prototype.sendACK = function(buf, cb) {
   var self = this;
 
   ACK_REQUESTED = 0;
@@ -382,7 +388,7 @@ radio.prototype.sendACK(buf, cb) {
   }
 }
 
-radio.prototype.canSend(cb) {
+radio.prototype.canSend = function(cb) {
   var self = this;
   /*TODO: RSSI checker (line 207 of original library)*/
   if (self._mode == r.RF69_MODE_RX && PAYLOADLEN == 0) {
@@ -394,7 +400,7 @@ radio.prototype.canSend(cb) {
   else cb(null, false)
 }
 
-radio.prototype.receiveDone(cb) {
+radio.prototype.receiveDone = function(cb) {
   if (this._mode == r.RF69_MODE_RX && PAYLOAD > 0) {
     setMode(r.RF69_MODE_STANDBY, function(err) {
       if (err) return cb(err);
@@ -410,7 +416,7 @@ radio.prototype.receiveDone(cb) {
   }
 }
 
-radio.prototype.receiveBegin(cb) {
+radio.prototype.receiveBegin = function(cb) {
   DATALEN = 0;
   SENDERID = 0;
   TARGETID = 0;
@@ -433,4 +439,4 @@ radio.prototype.receiveBegin(cb) {
   }
 }
 
-module.exports = radio;
+module.exports = {radio: radio};
