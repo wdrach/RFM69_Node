@@ -90,7 +90,15 @@ function conditionalSet(reg, mask, set, cb) {
   })
 }
 
-function radio() {};
+function radio() {
+  self.DATALEN = 0;
+  self.SENDERID = 0;
+  self.TARGETID = 0;
+  self.PAYLOADLEN = 0;
+  self.ACK_REQUESTED = 0;
+  self.ACK_RECEIVED = 0;
+  self.RSSI = 0;
+};
 
 radio.prototype.initialize = function(freqBand, nodeID, networkID, cb) {
   var self = this;
@@ -280,7 +288,7 @@ radio.prototype.send = function(toAddress, buf, requestACK, cb) {
     var ret = false;
     var to = setTimeout(function() {
       ret = true;
-      SENDERID = sender;
+      self.SENDERID = sender;
       self.sendFrame(toAddress, buf, requestACK, false, cb);
     }, 1000);
 
@@ -299,7 +307,7 @@ radio.prototype.send = function(toAddress, buf, requestACK, cb) {
     }, function(err) {
       if (ret) return;
       clearTimeout(to);
-      SENDERID = sender;
+      self.SENDERID = sender;
       self.sendFrame(toAddress, buf, requestACK, false, cb);
     });
   }
@@ -351,9 +359,8 @@ radio.prototype.sendFrame = function(toAddress, buf, requestACK, cb) {
 radio.prototype.sendACK = function(buf, cb) {
   var self = this;
 
-  ACK_REQUESTED = 0;
-  sender = SENDERID;
-  _RSSI = RSSI;
+  self.ACK_REQUESTED = 0;
+  sender = self.SENDERID;
   conditionalSet(r.REG_PACKETCONFIG2, 0xFB, r.RF_PACKET2_RXRESTART, function(err) {
     if (err) return cb(err);
     wait();
@@ -363,7 +370,7 @@ radio.prototype.sendACK = function(buf, cb) {
     var ret = false;
     var to = setTimeout(function() {
       ret = true;
-      SENDERID = sender;
+      self.SENDERID = sender;
       self.sendFrame(sender, buf, false, true, cb);
     }, 1000);
 
@@ -382,7 +389,7 @@ radio.prototype.sendACK = function(buf, cb) {
     }, function(err) {
       if (ret) return;
       clearTimeout(to);
-      SENDERID = sender;
+      self.SENDERID = sender;
       self.sendFrame(sender, buf, false, true, cb);
     });
   }
@@ -391,7 +398,7 @@ radio.prototype.sendACK = function(buf, cb) {
 radio.prototype.canSend = function(cb) {
   var self = this;
   /*TODO: RSSI checker (line 207 of original library)*/
-  if (self._mode == r.RF69_MODE_RX && PAYLOADLEN == 0) {
+  if (self._mode == r.RF69_MODE_RX && self.PAYLOADLEN == 0) {
     setMode(r.RF69_MODE_STANDBY, function(err) {
       if (err) cb(err);
       cb(null, true);
@@ -417,13 +424,13 @@ radio.prototype.receiveDone = function(cb) {
 }
 
 radio.prototype.receiveBegin = function(cb) {
-  DATALEN = 0;
-  SENDERID = 0;
-  TARGETID = 0;
-  PAYLOADLEN = 0;
-  ACK_REQUESTED = 0;
-  ACK_RECEIVED = 0;
-  RSSI = 0;
+  self.DATALEN = 0;
+  self.SENDERID = 0;
+  self.TARGETID = 0;
+  self.PAYLOADLEN = 0;
+  self.ACK_REQUESTED = 0;
+  self.ACK_RECEIVED = 0;
+  self.RSSI = 0;
   readReg(r.REG_IRQFLAGS2, function(err, data) {
     if (err) return cb(err);
     if (data & r.RF_IRQFLAGS2_PAYLOADREADY) return conditionalSet(r.REG_PACKETCONFIG2, 0xFB, r.RF_PACKET2_RXRESTART, setupRx);
